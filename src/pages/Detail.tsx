@@ -45,10 +45,7 @@ export default function Detail({
   }, [achievement.id]);
   useEffect(() => {
     load();
-    api
-      .view(achievement.id)
-      .then(refreshStats)
-      .catch(() => {});
+    api.view(achievement.id).catch(() => {});
   }, [load, achievement.id, refreshStats]);
   const choose = (rate: number) => {
     setActiveRate(rate);

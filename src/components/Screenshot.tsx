@@ -85,15 +85,34 @@ export async function appendScreenshot(form: FormData, file: File) {
   const bitmap = await createImageBitmap(file).catch(() => {
     throw new Error("截图无法读取，请重新选择 PNG、JPG 或 WebP 图片");
   });
-  const scale = Math.min(1, 360 / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-  const thumbnail = await new Promise<Blob>((resolve) =>
-    canvas.toBlob((blob) => resolve(blob!), "image/webp", 0.8),
-  );
-  form.set("image", file);
-  form.set("thumbnail", thumbnail, "thumbnail.webp");
+  const encode = async (edge: number, quality: number) => {
+    const scale = Math.min(1, edge / Math.max(bitmap.width, bitmap.height));
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    canvas
+      .getContext("2d")!
+      .drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    return new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error("截图无法压缩"))),
+        "image/webp",
+        quality,
+      ),
+    );
+  };
+  try {
+    let original = await encode(2560, 0.85);
+    for (const edge of [2560, 2200, 1800]) {
+      if (original.size <= 256 * 1024) break;
+      original = await encode(edge, 0.72);
+    }
+    const thumbnail = await encode(360, 0.7);
+    if (original.size > 256 * 1024 || thumbnail.size > 24 * 1024)
+      throw new Error("截图较复杂，请选择只包含活动页面的截图");
+    form.set("image", original, "screenshot.webp");
+    form.set("thumbnail", thumbnail, "thumbnail.webp");
+  } finally {
+    bitmap.close();
+  }
 }
