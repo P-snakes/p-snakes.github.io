@@ -1,0 +1,26 @@
+{
+  "source": "https://cocogoat.work/achievement/all",
+  "sourceBuild": "175guuc",
+  "importedAt": "2026-10-02T13:58:48.589Z",
+  "version": "7.1",
+  "rawCount": 1854,
+  "uniqueCount": 1560,
+  "chunkFiles": [
+    "000.json",
+    "001.json",
+    "002.json",
+    "003.json",
+    "004.json",
+    "005.json",
+    "006.json",
+    "007.json",
+    "008.json",
+    "009.json",
+    "010.json",
+    "011.json",
+    "012.json",
+    "013.json",
+    "014.json",
+    "015.json"
+  ]
+}
