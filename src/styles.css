@@ -164,10 +164,24 @@ button svg {
   display: none !important;
 }
 .main-content {
+  display: flex;
+  flex-direction: column;
   margin-left: 230px;
   padding: 48px 56px 24px;
   max-width: 1600px;
   min-height: 100vh;
+}
+.snapshot-footer {
+  margin-top: auto;
+  padding-top: 36px;
+  color: #999;
+  font-size: 0.6875rem;
+  line-height: 1.5;
+}
+.form-hint {
+  font-size: 0.8125rem;
+  color: #777;
+  line-height: 1.7;
 }
 .page-heading {
   display: flex;
@@ -1021,8 +1035,16 @@ button svg {
 .picker-row:last-child {
   border-bottom: 0;
 }
-.picker-row:hover {
+.picker-row:hover:not(:disabled) {
   background: #f7f7f7;
+}
+.picker-row:disabled {
+  color: #888;
+  background: #f7f7f7;
+  opacity: 1;
+}
+.picker-row:disabled small {
+  color: #888;
 }
 .picker-row span {
   display: block;

@@ -126,9 +126,11 @@ export function Screenshot({
 export function ScreenshotInput({
   file,
   setFile,
+  publicProof = false,
 }: {
   file: File | null;
   setFile: (file: File | null) => void;
+  publicProof?: boolean;
 }) {
   const [preview, setPreview] = useState("");
   useEffect(() => {
@@ -143,6 +145,11 @@ export function ScreenshotInput({
   return (
     <div className="field">
       <span className="field-label">截图凭证</span>
+      {publicProof && (
+        <p className="form-hint">
+          您上传的凭证将可被所有人浏览，请注意保护您的隐私。
+        </p>
+      )}
       <label className={`upload ${file ? "has-image" : ""}`}>
         <input
           type="file"

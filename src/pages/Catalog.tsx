@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { Achievement, AchievementStats } from "../../shared/types";
 import { formatRate } from "../../shared/rate";
+import { CAPACITY } from "../../shared/types";
 import { Icon } from "../components/Icons";
 
 export function Catalog({
@@ -75,7 +76,8 @@ export function Catalog({
           <div>
             <span>每项收集上限</span>
             <strong>
-              300<small> 条</small>
+              {CAPACITY}
+              <small> 条</small>
             </strong>
           </div>
         </div>
@@ -179,7 +181,7 @@ export function Catalog({
               </div>
               <span className="record-count">
                 {ready ? item?.total || 0 : "—"}
-                <small> / 300</small>
+                <small> / {CAPACITY}</small>
               </span>
               <span className="view-count">
                 {ready ? (item?.views || 0).toLocaleString() : "—"}

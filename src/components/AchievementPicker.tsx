@@ -6,10 +6,12 @@ export function AchievementPicker({
   achievements,
   selected,
   choose,
+  unavailable,
 }: {
   achievements: Achievement[];
   selected: Achievement | null;
   choose: (achievement: Achievement | null) => void;
+  unavailable: Map<number, string>;
 }) {
   const [query, setQuery] = useState("");
   const matches = achievements
@@ -29,6 +31,9 @@ export function AchievementPicker({
           <div>
             <strong>{selected.name}</strong>
             <small>{selected.category}</small>
+            {!!unavailable.get(selected.id) && (
+              <small>{unavailable.get(selected.id)}</small>
+            )}
           </div>
           <button
             type="button"
@@ -60,10 +65,14 @@ export function AchievementPicker({
                 key={achievement.id}
                 type="button"
                 className="picker-row"
+                disabled={!!unavailable.get(achievement.id)}
                 onClick={() => choose(achievement)}
               >
                 <span>{achievement.name}</span>
                 <small>{achievement.category}</small>
+                {!!unavailable.get(achievement.id) && (
+                  <small>{unavailable.get(achievement.id)}</small>
+                )}
               </button>
             ))}
             {!matches.length && <p className="empty-small">未找到成就</p>}

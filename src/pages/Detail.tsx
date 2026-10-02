@@ -21,6 +21,8 @@ export default function Detail({
   closed,
   recordCount,
   generatedAt,
+  recordsVersion,
+  unavailable,
 }: {
   achievement: Achievement;
   achievements: Achievement[];
@@ -31,6 +33,8 @@ export default function Detail({
   closed: boolean;
   recordCount: number;
   generatedAt: string | null;
+  recordsVersion: string;
+  unavailable: Map<number, string>;
 }) {
   const [records, setRecords] = useState<Submission[]>([]);
   const distribution = useMemo(() => groupDistribution(records), [records]);
@@ -49,11 +53,14 @@ export default function Detail({
   const load = useCallback(() => {
     setLoading(true);
     setError("");
-    (recordCount ? readRecords(achievement.id) : Promise.resolve([]))
+    (recordCount
+      ? readRecords(achievement.id, recordsVersion)
+      : Promise.resolve([])
+    )
       .then(setRecords)
       .catch((error) => setError(error.message))
       .finally(() => setLoading(false));
-  }, [achievement.id, recordCount, generatedAt]);
+  }, [achievement.id, recordCount, recordsVersion]);
   useEffect(() => {
     load();
   }, [load]);
@@ -103,7 +110,12 @@ export default function Detail({
         <button
           className="button primary"
           onClick={() => setSubmit(true)}
-          disabled={closed || total >= CAPACITY || loading}
+          disabled={
+            closed ||
+            total >= CAPACITY ||
+            !!unavailable.get(achievement.id) ||
+            loading
+          }
         >
           提交达成率
         </button>
@@ -147,12 +159,12 @@ export default function Detail({
           <span>已收集</span>
           <strong>
             {loading ? "—" : total}
-            <small> / 300</small>
+            <small> / {CAPACITY}</small>
           </strong>
         </div>
         <div>
           <span>剩余名额</span>
-          <strong>{loading ? "—" : CAPACITY - total}</strong>
+          <strong>{loading ? "—" : Math.max(0, CAPACITY - total)}</strong>
         </div>
       </div>
       <section className="panel">
@@ -207,7 +219,7 @@ export default function Detail({
         )}
         {distribution.map((item) => (
           <RateGroup
-            key={`${revision}-${generatedAt}-${item.rate}`}
+            key={`${revision}-${recordsVersion || generatedAt}-${item.rate}`}
             group={item}
             records={records}
             live={live}
@@ -238,6 +250,7 @@ export default function Detail({
         <Modal title="提交达成率" close={() => setSubmit(false)}>
           <SubmissionForm
             achievements={achievements}
+            unavailable={unavailable}
             initial={achievement}
             siteKey={siteKey}
             eventName={eventName}

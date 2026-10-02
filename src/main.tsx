@@ -1,8 +1,15 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { createRoot } from "react-dom/client";
 import catalog from "./catalog";
 import { readSnapshot, type Snapshot } from "./api";
-import { currentMode } from "./snapshot";
+import { currentMode, submissionStatus } from "./snapshot";
 import { Icon } from "./components/Icons";
 import { SubmissionForm } from "./components/SubmissionForm";
 import { Catalog } from "./pages/Catalog";
@@ -17,6 +24,16 @@ function App() {
   const stats = snapshot?.items || [];
   const totalSubmissions = snapshot?.totalSubmissions || 0;
   const mode = snapshot ? currentMode(snapshot) : "normal";
+  const unavailable = useMemo(
+    () =>
+      new Map(
+        stats.map((item) => [
+          item.achievement_id,
+          submissionStatus(item, snapshot?.day || ""),
+        ]),
+      ),
+    [stats, snapshot?.day],
+  );
   const live = !restricted && mode === "normal";
   const config = snapshot && {
     eventName: snapshot.eventName,
@@ -112,12 +129,6 @@ function App() {
             </button>
           </div>
         )}
-        {snapshot?.generatedAt && (
-          <p className="muted">
-            快照更新：{new Date(snapshot.generatedAt).toLocaleString("zh-CN")}
-            {!live && " · 凭证浏览暂停"}
-          </p>
-        )}
         {(route === "/" || route === "/all") && (
           <Catalog
             achievements={catalog.achievements}
@@ -143,6 +154,7 @@ function App() {
               ) : config ? (
                 <SubmissionForm
                   achievements={catalog.achievements}
+                  unavailable={unavailable}
                   siteKey={config.siteKey}
                   eventName={config.eventName}
                   onSuccess={refreshStats}
@@ -161,6 +173,7 @@ function App() {
                   key={achievement.id}
                   achievement={achievement}
                   achievements={catalog.achievements}
+                  unavailable={unavailable}
                   siteKey={config.siteKey}
                   eventName={config.eventName}
                   refreshStats={refreshStats}
@@ -171,15 +184,29 @@ function App() {
                       ?.total || 0
                   }
                   generatedAt={snapshot?.generatedAt || null}
+                  recordsVersion={
+                    stats.find((item) => item.achievement_id === achievement.id)
+                      ?.recordsVersion || ""
+                  }
                 />
               )
             ) : (
               <p className="empty">未找到成就</p>
             ))}
         </Suspense>
+        {snapshot?.generatedAt && (
+          <footer className="snapshot-footer">
+            快照更新：{new Date(snapshot.generatedAt).toLocaleString("zh-CN")}
+            {!live && " · 凭证浏览暂停"}
+          </footer>
+        )}
       </main>
     </div>
   );
 }
 
 createRoot(document.getElementById("root")!).render(<App />);
+if ("serviceWorker" in navigator)
+  navigator.serviceWorker
+    .register(`${import.meta.env.BASE_URL}sw.js`, { updateViaCache: "none" })
+    .catch(console.error);

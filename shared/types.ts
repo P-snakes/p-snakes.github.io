@@ -1,4 +1,4 @@
-export const CAPACITY = 300;
+export const CAPACITY = 50;
 
 export interface Achievement {
   id: number;
@@ -14,6 +14,9 @@ export interface AchievementStats {
   views: number;
   rate: number | null;
   votes: number;
+  dailySubmitted: number;
+  dailyLimit: number;
+  recordsVersion: string;
 }
 
 export interface Distribution {

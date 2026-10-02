@@ -5,6 +5,10 @@ import type {
   Submission,
 } from "../shared/types";
 import { formatRate } from "../shared/rate";
+import {
+  readSubmissionIdentity,
+  saveSubmissionIdentity,
+} from "./submission-identity";
 
 export const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 export interface Snapshot {
@@ -26,10 +30,13 @@ export async function readSnapshot(): Promise<Snapshot> {
   if (!response.ok) throw new Error("快照暂时无法读取");
   return response.json();
 }
-export async function readRecords(id: number): Promise<Submission[]> {
+export async function readRecords(
+  id: number,
+  version: string,
+): Promise<Submission[]> {
   const response = await fetch(
-    `${import.meta.env.BASE_URL}records/${id}.json`,
-    { cache: "no-cache" },
+    `${import.meta.env.BASE_URL}records/${id}${version ? "." + version : ""}.json`,
+    { cache: version ? "force-cache" : "no-cache" },
   );
   if (!response.ok) throw new Error("提交记录快照暂时无法读取");
   return response.json();
@@ -68,6 +75,10 @@ export async function request<T>(
     throw new ApiError("接口暂时不可用，达成率可通过快照查询", 503);
   }
   if (response.status === 503) restrictBrowsing();
+  if (path === "/submissions") {
+    const browser = response.headers.get("X-Submission-Browser");
+    if (browser) saveSubmissionIdentity(browser);
+  }
   if (!response.headers.get("Content-Type")?.includes("application/json")) {
     restrictBrowsing();
     throw new ApiError("接口暂时不可用，达成率可通过快照查询", response.status);
@@ -105,8 +116,13 @@ export const api = {
     request<Page<Submission>>(
       `/achievements/${id}/submissions?rate=${formatRate(rate)}${cursor === null ? "" : `&cursor=${cursor}`}`,
     ),
-  submit: (form: FormData) =>
-    request<{ id: number }>("/submissions", { method: "POST", body: form }),
+  submit: (form: FormData) => {
+    form.set("browserToken", readSubmissionIdentity());
+    return request<{ id: number }>("/submissions", {
+      method: "POST",
+      body: form,
+    });
+  },
   report: (form: FormData) =>
     request("/reports", { method: "POST", body: form }),
 };

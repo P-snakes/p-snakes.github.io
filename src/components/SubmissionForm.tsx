@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import type { Achievement } from "../../shared/types";
 import { parseRate } from "../../shared/rate";
-import { api } from "../api";
+import { api, ApiError } from "../api";
 import { AchievementPicker } from "./AchievementPicker";
 import { appendScreenshot, ScreenshotInput } from "./Screenshot";
 import { Turnstile } from "./Turnstile";
@@ -13,12 +13,14 @@ export function SubmissionForm({
   siteKey,
   eventName,
   onSuccess,
+  unavailable,
 }: {
   achievements: Achievement[];
   initial?: Achievement | null;
   siteKey: string;
   eventName: string;
   onSuccess: () => void;
+  unavailable: Map<number, string>;
 }) {
   const [selected, setSelected] = useState<Achievement | null>(initial);
   const [rate, setRate] = useState("");
@@ -28,6 +30,8 @@ export function SubmissionForm({
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [verification, setVerification] = useState(0);
+  const [rejected, setRejected] = useState<Map<number, string>>(new Map());
+  const blocked = new Map([...unavailable, ...rejected]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -49,6 +53,13 @@ export function SubmissionForm({
       onSuccess();
     } catch (error) {
       setError((error as Error).message);
+      if (error instanceof ApiError && error.status === 409)
+        setRejected((previous) =>
+          new Map(previous).set(
+            selected.id,
+            error.message.includes("今日") ? "今日已满" : "收集已满",
+          ),
+        );
       setToken("");
       setVerification((value) => value + 1);
     } finally {
@@ -81,10 +92,14 @@ export function SubmissionForm({
   return (
     <form onSubmit={submit} className="form-stack">
       <p className="form-source">{eventName}</p>
+      <p className="form-hint">
+        若您想要提交的成就已满且数值有误，您可以通过该成就的详情页进行反馈来提交您的数据。
+      </p>
       <AchievementPicker
         achievements={achievements}
         selected={selected}
         choose={setSelected}
+        unavailable={blocked}
       />
       <RateInput
         id="submission-rate"
@@ -92,7 +107,7 @@ export function SubmissionForm({
         value={rate}
         setValue={setRate}
       />
-      <ScreenshotInput file={file} setFile={setFile} />
+      <ScreenshotInput file={file} setFile={setFile} publicProof />
       <Turnstile
         key={verification}
         siteKey={siteKey}
@@ -107,7 +122,9 @@ export function SubmissionForm({
       )}
       <button
         className="button primary full"
-        disabled={busy || !token || !selected || !file}
+        disabled={
+          busy || !token || !selected || !file || !!blocked.get(selected.id)
+        }
       >
         {busy ? "提交中…" : "提交达成率"}
       </button>
