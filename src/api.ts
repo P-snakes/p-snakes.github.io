@@ -7,8 +7,44 @@ import type {
 import { formatRate } from "../shared/rate";
 
 export const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
-export const evidenceUrl = (id: string, variant: "thumb" | "original") =>
-  `${API_URL}/api/evidence/${id}/${variant}`;
+export interface Snapshot {
+  items: AchievementStats[];
+  totalSubmissions: number;
+  mode: "normal" | "snapshot" | "closed";
+  day: string;
+  generatedAt: string | null;
+  eventName: string;
+  siteKey: string;
+}
+export function restrictBrowsing() {
+  window.dispatchEvent(new Event("snapshot-mode"));
+}
+export async function readSnapshot(): Promise<Snapshot> {
+  const response = await fetch(`${import.meta.env.BASE_URL}snapshot.json`, {
+    cache: "no-cache",
+  });
+  if (!response.ok) throw new Error("快照暂时无法读取");
+  return response.json();
+}
+export async function readRecords(id: number): Promise<Submission[]> {
+  const response = await fetch(
+    `${import.meta.env.BASE_URL}records/${id}.json`,
+    { cache: "no-cache" },
+  );
+  if (!response.ok) throw new Error("提交记录快照暂时无法读取");
+  return response.json();
+}
+export const evidenceUrl = (
+  id: string,
+  variant: "thumb" | "original",
+  access: string,
+) =>
+  `${API_URL}/api/evidence/${id}/${variant}?access=${encodeURIComponent(access)}`;
+
+export interface EvidenceAccess {
+  access: string;
+  expiresAt: number;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -24,7 +60,18 @@ export async function request<T>(
   init: RequestInit = {},
 ): Promise<T> {
   const headers = new Headers(init.headers);
-  const response = await fetch(`${API_URL}/api${path}`, { ...init, headers });
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/api${path}`, { ...init, headers });
+  } catch {
+    restrictBrowsing();
+    throw new ApiError("接口暂时不可用，达成率可通过快照查询", 503);
+  }
+  if (response.status === 503) restrictBrowsing();
+  if (!response.headers.get("Content-Type")?.includes("application/json")) {
+    restrictBrowsing();
+    throw new ApiError("接口暂时不可用，达成率可通过快照查询", response.status);
+  }
   const result = await response.json();
   if (!response.ok) throw new ApiError(result.error, response.status);
   return result;
@@ -40,6 +87,20 @@ export const api = {
   detail: (id: number) =>
     request<{ distribution: Distribution[] }>(`/achievements/${id}`),
   view: (id: number) => request(`/achievements/${id}/view`, { method: "POST" }),
+  evidenceAccess: (
+    variant: "thumb" | "original",
+    target: number | string,
+    token: string,
+  ) =>
+    request<EvidenceAccess>("/evidence-access", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        variant,
+        token,
+        ...(variant === "thumb" ? { achievementId: target } : { id: target }),
+      }),
+    }),
   submissions: (id: number, rate: number, cursor: number | null = null) =>
     request<Page<Submission>>(
       `/achievements/${id}/submissions?rate=${formatRate(rate)}${cursor === null ? "" : `&cursor=${cursor}`}`,

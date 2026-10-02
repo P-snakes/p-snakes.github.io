@@ -1,26 +1,122 @@
 import { useEffect, useState } from "react";
-import { evidenceUrl } from "../api";
+import { api, evidenceUrl, type EvidenceAccess } from "../api";
 import { Icon } from "./Icons";
 import { Modal } from "./Modal";
+import { Turnstile } from "./Turnstile";
 
-export function Screenshot({ id }: { id: string }) {
+export function EvidenceVerification({
+  siteKey,
+  variant,
+  target,
+  onVerified,
+}: {
+  siteKey: string;
+  variant: "thumb" | "original";
+  target: number | string;
+  onVerified: (access: EvidenceAccess) => void;
+}) {
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  return (
+    <>
+      <Turnstile
+        key={attempt}
+        siteKey={siteKey}
+        action={variant === "thumb" ? "thumbnails" : "original"}
+        onToken={(token) => {
+          if (!token) return;
+          setBusy(true);
+          api
+            .evidenceAccess(variant, target, token)
+            .then(onVerified)
+            .catch((error) => setError(error.message))
+            .finally(() => setBusy(false));
+        }}
+        onError={setError}
+      />
+      {busy && <p className="muted">验证中…</p>}
+      {error && (
+        <p className="error" role="alert">
+          {error}{" "}
+          <button
+            className="text-button"
+            onClick={() => {
+              setError("");
+              setAttempt((value) => value + 1);
+            }}
+          >
+            重新验证
+          </button>
+        </p>
+      )}
+    </>
+  );
+}
+
+export function Screenshot({
+  id,
+  siteKey,
+  thumbnailAccess,
+}: {
+  id: string;
+  siteKey: string;
+  thumbnailAccess?: string;
+}) {
   const [open, setOpen] = useState(false);
+  const [originalAccess, setOriginalAccess] = useState("");
+  const [error, setError] = useState("");
   return (
     <>
       <button
-        className="thumbnail"
+        className={thumbnailAccess ? "thumbnail" : "text-button proof-button"}
         aria-label="查看截图凭证"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setOriginalAccess("");
+          setError("");
+          setOpen(true);
+        }}
       >
-        <img
-          src={evidenceUrl(id, "thumb")}
-          alt="达成率截图凭证"
-          loading="lazy"
-        />
+        {thumbnailAccess ? (
+          <img
+            src={evidenceUrl(id, "thumb", thumbnailAccess)}
+            alt="达成率截图凭证"
+            loading="lazy"
+          />
+        ) : (
+          "查看凭证"
+        )}
       </button>
       {open && (
         <Modal title="截图凭证" close={() => setOpen(false)} wide>
-          <img src={evidenceUrl(id, "original")} alt="达成率截图凭证" />
+          {originalAccess ? (
+            <img
+              src={evidenceUrl(id, "original", originalAccess)}
+              alt="达成率截图凭证"
+              onError={() => setError("凭证读取失败，请重新验证")}
+            />
+          ) : (
+            <EvidenceVerification
+              siteKey={siteKey}
+              variant="original"
+              target={id}
+              onVerified={({ access }) => setOriginalAccess(access)}
+            />
+          )}
+          {error && (
+            <p className="error" role="alert">
+              {error}{" "}
+              <button
+                className="text-button"
+                onClick={() => {
+                  setError("");
+                  setOriginalAccess("");
+                }}
+              >
+                重新验证
+              </button>
+            </p>
+          )}
         </Modal>
       )}
     </>

@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Achievement, Distribution, Submission } from "../../shared/types";
 import { CAPACITY } from "../../shared/types";
 import { formatRate } from "../../shared/rate";
-import { api } from "../api";
+import { api, readRecords, type EvidenceAccess } from "../api";
+import { groupDistribution } from "../snapshot";
 import { Icon } from "../components/Icons";
 import { Modal } from "../components/Modal";
 import { PieChart } from "../components/PieChart";
 import { ReportForm } from "../components/ReportForm";
-import { Screenshot } from "../components/Screenshot";
+import { Screenshot, EvidenceVerification } from "../components/Screenshot";
 import { SubmissionForm } from "../components/SubmissionForm";
 
 export default function Detail({
@@ -16,14 +17,23 @@ export default function Detail({
   siteKey,
   eventName,
   refreshStats,
+  live,
+  closed,
+  recordCount,
+  generatedAt,
 }: {
   achievement: Achievement;
   achievements: Achievement[];
   siteKey: string;
   eventName: string;
   refreshStats: () => void;
+  live: boolean;
+  closed: boolean;
+  recordCount: number;
+  generatedAt: string | null;
 }) {
-  const [distribution, setDistribution] = useState<Distribution[]>([]);
+  const [records, setRecords] = useState<Submission[]>([]);
+  const distribution = useMemo(() => groupDistribution(records), [records]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeRate, setActiveRate] = useState<number | null>(null);
@@ -33,20 +43,42 @@ export default function Detail({
   } | null>(null);
   const [submit, setSubmit] = useState(false);
   const [revision, setRevision] = useState(0);
+  const [thumbnails, setThumbnails] = useState<EvidenceAccess | null>(null);
+  const [verifyThumbnails, setVerifyThumbnails] = useState(false);
   const total = distribution.reduce((sum, item) => sum + item.count, 0);
   const load = useCallback(() => {
     setLoading(true);
     setError("");
-    api
-      .detail(achievement.id)
-      .then((result) => setDistribution(result.distribution))
+    (recordCount ? readRecords(achievement.id) : Promise.resolve([]))
+      .then(setRecords)
       .catch((error) => setError(error.message))
       .finally(() => setLoading(false));
-  }, [achievement.id]);
+  }, [achievement.id, recordCount, generatedAt]);
   useEffect(() => {
     load();
-    api.view(achievement.id).catch(() => {});
-  }, [load, achievement.id, refreshStats]);
+  }, [load]);
+  useEffect(() => {
+    const day = new Date().toISOString().slice(0, 10);
+    const key = `view:${achievement.id}`;
+    if (live && localStorage.getItem(key) !== day) {
+      localStorage.setItem(key, day);
+      api.view(achievement.id).catch(() => {});
+    }
+  }, [achievement.id, live]);
+  useEffect(() => {
+    if (!live) {
+      setThumbnails(null);
+      setVerifyThumbnails(false);
+    }
+  }, [live]);
+  useEffect(() => {
+    if (!thumbnails) return;
+    const timer = window.setTimeout(
+      () => setThumbnails(null),
+      Math.max(0, thumbnails.expiresAt - Date.now()),
+    );
+    return () => window.clearTimeout(timer);
+  }, [thumbnails]);
   const choose = (rate: number) => {
     setActiveRate(rate);
     setJump((value) => value + 1);
@@ -71,7 +103,7 @@ export default function Detail({
         <button
           className="button primary"
           onClick={() => setSubmit(true)}
-          disabled={total >= CAPACITY || loading}
+          disabled={closed || total >= CAPACITY || loading}
         >
           提交达成率
         </button>
@@ -152,17 +184,36 @@ export default function Detail({
           </div>
           <button
             className="button"
-            disabled={!total}
+            disabled={!total || closed}
             onClick={() => setReport({ submission: null })}
           >
             反馈所有错误值
           </button>
         </div>
+        {!!total && (
+          <label className="thumbnail-toggle">
+            <input
+              type="checkbox"
+              checked={!!thumbnails}
+              disabled={!live}
+              onChange={(event) =>
+                event.target.checked
+                  ? setVerifyThumbnails(true)
+                  : setThumbnails(null)
+              }
+            />
+            查看缩略图
+          </label>
+        )}
         {distribution.map((item) => (
           <RateGroup
-            key={`${revision}-${item.rate}`}
-            achievementId={achievement.id}
+            key={`${revision}-${generatedAt}-${item.rate}`}
             group={item}
+            records={records}
+            live={live}
+            closed={closed}
+            siteKey={siteKey}
+            thumbnailAccess={thumbnails?.access}
             selected={activeRate === item.rate}
             jump={jump}
             report={(submission) => setReport({ submission })}
@@ -170,6 +221,19 @@ export default function Detail({
         ))}
         {!loading && !total && <p className="empty">暂无记录</p>}
       </section>
+      {verifyThumbnails && (
+        <Modal title="查看缩略图" close={() => setVerifyThumbnails(false)}>
+          <EvidenceVerification
+            siteKey={siteKey}
+            variant="thumb"
+            target={achievement.id}
+            onVerified={(access) => {
+              setThumbnails(access);
+              setVerifyThumbnails(false);
+            }}
+          />
+        </Modal>
+      )}
       {submit && (
         <Modal title="提交达成率" close={() => setSubmit(false)}>
           <SubmissionForm
@@ -200,88 +264,63 @@ export default function Detail({
 }
 
 function RateGroup({
-  achievementId,
   group,
   selected,
   jump,
   report,
+  records,
+  live,
+  closed,
+  siteKey,
+  thumbnailAccess,
 }: {
-  achievementId: number;
   group: Distribution;
   selected: boolean;
   jump: number;
   report: (submission: Submission) => void;
+  records: Submission[];
+  live: boolean;
+  closed: boolean;
+  siteKey: string;
+  thumbnailAccess?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const firstRecord = useRef<HTMLDivElement>(null);
-  const [rows, setRows] = useState<Submission[]>([]);
-  const [cursor, setCursor] = useState<number | null>(null);
   const [started, setStarted] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const pending = useRef(false);
-  const requested = useRef(false);
+  const [limit, setLimit] = useState(20);
   const lastJump = useRef(-1);
-  const mounted = useRef(true);
-  const load = useCallback(
-    async (next: number | null = null) => {
-      if (pending.current) return;
-      pending.current = true;
-      requested.current = true;
-      setBusy(true);
-      setStarted(true);
-      setError("");
-      try {
-        const page = await api.submissions(achievementId, group.rate, next);
-        if (mounted.current) {
-          setRows((previous) =>
-            next === null ? page.items : [...previous, ...page.items],
-          );
-          setCursor(page.nextCursor);
-        }
-      } catch (error) {
-        if (mounted.current) setError((error as Error).message);
-      } finally {
-        pending.current = false;
-        if (mounted.current) setBusy(false);
-      }
-    },
-    [achievementId, group.rate],
-  );
+  const rows = started
+    ? records.filter((row) => row.rate === group.rate).slice(0, limit)
+    : [];
   useEffect(() => {
-    mounted.current = true;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          if (!requested.current) load();
+          setStarted(true);
           observer.disconnect();
         }
       },
       { rootMargin: "120px" },
     );
     observer.observe(ref.current!);
-    return () => {
-      mounted.current = false;
-      observer.disconnect();
-    };
-  }, [load]);
+    return () => observer.disconnect();
+  }, []);
   useEffect(() => {
     if (!selected || lastJump.current === jump) return;
-    if (!started) load();
-    if (rows.length) {
-      firstRecord.current!.scrollIntoView({
+    setStarted(true);
+    if (firstRecord.current) {
+      firstRecord.current.scrollIntoView({
         behavior: "smooth",
         block: "center",
       });
       lastJump.current = jump;
     } else ref.current!.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [selected, jump, rows.length, started, load]);
-
+  }, [selected, jump, started]);
   return (
     <div
-      className={`rate-group ${selected ? "highlighted" : ""}`}
+      className={"rate-group " + (selected ? "highlighted" : "")}
       ref={ref}
-      id={`rate-${group.rate}`}
+      id={"rate-" + group.rate}
     >
       <div className="group-heading">
         <h3>
@@ -306,7 +345,15 @@ function RateGroup({
             <strong>{formatRate(row.rate)}%</strong>
             <small>#{row.id}</small>
           </div>
-          <Screenshot id={row.evidence_id} />
+          {live ? (
+            <Screenshot
+              id={row.evidence_id}
+              siteKey={siteKey}
+              thumbnailAccess={thumbnailAccess}
+            />
+          ) : (
+            <span className="muted">暂停浏览</span>
+          )}
           <time dateTime={new Date(row.created_at * 1000).toISOString()}>
             {new Date(row.created_at * 1000).toLocaleString("zh-CN", {
               year: "numeric",
@@ -319,25 +366,17 @@ function RateGroup({
           <button
             className="text-button report-button"
             onClick={() => report(row)}
+            disabled={closed}
           >
             错误数据？反馈
           </button>
         </div>
       ))}
-      {busy && <p className="empty-small">加载中…</p>}
-      {error && (
-        <p className="error group-error" role="alert">
-          {error}
-          <button
-            className="text-button"
-            onClick={() => load(rows.length ? cursor : null)}
-          >
-            重试
-          </button>
-        </p>
-      )}
-      {!busy && cursor !== null && (
-        <button className="load-more" onClick={() => load(cursor)}>
+      {started && rows.length < group.count && (
+        <button
+          className="load-more"
+          onClick={() => setLimit((value) => value + 20)}
+        >
           加载更多{" "}
           <span>
             {rows.length} / {group.count}

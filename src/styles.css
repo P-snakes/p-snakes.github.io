@@ -791,6 +791,16 @@ button svg {
   padding: 0;
   overflow: hidden;
 }
+.thumbnail-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 18px;
+  font-size: 0.875rem;
+}
+.proof-button {
+  text-align: left;
+}
 .thumbnail img {
   width: 100%;
   height: 100%;

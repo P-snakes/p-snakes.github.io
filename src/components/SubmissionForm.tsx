@@ -63,7 +63,7 @@ export function SubmissionForm({
           <Icon name="check" size={26} />
         </span>
         <h2>已提交</h2>
-        <p>你的记录已加入达成率统计</p>
+        <p>记录将在快照更新后显示</p>
         <button
           className="button"
           onClick={() => {

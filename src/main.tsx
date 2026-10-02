@@ -1,8 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import catalog from "./catalog";
-import type { AchievementStats } from "../shared/types";
-import { api } from "./api";
+import { readSnapshot, type Snapshot } from "./api";
+import { currentMode } from "./snapshot";
 import { Icon } from "./components/Icons";
 import { SubmissionForm } from "./components/SubmissionForm";
 import { Catalog } from "./pages/Catalog";
@@ -12,34 +12,44 @@ const Detail = lazy(() => import("./pages/Detail"));
 
 function App() {
   const [route, setRoute] = useState(location.hash.slice(1) || "/");
-  const [config, setConfig] = useState<{
-    siteKey: string;
-    eventName: string;
-  } | null>(null);
-  const [stats, setStats] = useState<AchievementStats[]>([]);
-  const [totalSubmissions, setTotalSubmissions] = useState(0);
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [restricted, setRestricted] = useState(false);
+  const stats = snapshot?.items || [];
+  const totalSubmissions = snapshot?.totalSubmissions || 0;
+  const mode = snapshot ? currentMode(snapshot) : "normal";
+  const live = !restricted && mode === "normal";
+  const config = snapshot && {
+    eventName: snapshot.eventName,
+    siteKey: snapshot.siteKey || import.meta.env.VITE_TURNSTILE_SITE_KEY || "",
+  };
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [menu, setMenu] = useState(false);
   const refreshStats = useCallback(() => {
-    api
-      .stats()
+    readSnapshot()
       .then((result) => {
-        setStats(result.items);
-        setTotalSubmissions(result.totalSubmissions);
+        setSnapshot(result);
+        setRestricted(false);
         setReady(true);
       })
       .catch((error) => setError(error.message));
   }, []);
   const connect = useCallback(() => {
     setError("");
-    api
-      .config()
-      .then(setConfig)
-      .catch((error) => setError(error.message));
     refreshStats();
   }, [refreshStats]);
   useEffect(connect, [connect]);
+  useEffect(() => {
+    const restricted = () => setRestricted(true);
+    window.addEventListener("snapshot-mode", restricted);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") refreshStats();
+    }, 5 * 60_000);
+    return () => {
+      window.removeEventListener("snapshot-mode", restricted);
+      window.clearInterval(timer);
+    };
+  }, [refreshStats]);
   useEffect(() => {
     const changed = () => {
       setRoute(location.hash.slice(1) || "/");
@@ -96,11 +106,17 @@ function App() {
       <main className="main-content">
         {error && (
           <div className="notice error" role="alert">
-            无法连接服务：{error}
+            {error}
             <button className="text-button" onClick={connect}>
               重试
             </button>
           </div>
+        )}
+        {snapshot?.generatedAt && (
+          <p className="muted">
+            快照更新：{new Date(snapshot.generatedAt).toLocaleString("zh-CN")}
+            {!live && " · 凭证浏览暂停"}
+          </p>
         )}
         {(route === "/" || route === "/all") && (
           <Catalog
@@ -122,7 +138,9 @@ function App() {
               </div>
             </div>
             <div className="form-panel">
-              {config ? (
+              {mode === "closed" ? (
+                <p className="empty">今日接口额度已用完</p>
+              ) : config ? (
                 <SubmissionForm
                   achievements={catalog.achievements}
                   siteKey={config.siteKey}
@@ -146,6 +164,13 @@ function App() {
                   siteKey={config.siteKey}
                   eventName={config.eventName}
                   refreshStats={refreshStats}
+                  live={live}
+                  closed={mode === "closed"}
+                  recordCount={
+                    stats.find((item) => item.achievement_id === achievement.id)
+                      ?.total || 0
+                  }
+                  generatedAt={snapshot?.generatedAt || null}
                 />
               )
             ) : (
