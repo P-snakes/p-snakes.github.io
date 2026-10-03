@@ -8,7 +8,7 @@ import {
 } from "react";
 import { createRoot } from "react-dom/client";
 import catalog from "./catalog";
-import { readSnapshot, type Snapshot } from "./api";
+import { API_URL, readSnapshot, type Snapshot } from "./api";
 import { currentMode, submissionStatus } from "./snapshot";
 import { Icon } from "./components/Icons";
 import { SubmissionForm } from "./components/SubmissionForm";
@@ -34,7 +34,7 @@ function App() {
       ),
     [stats, snapshot?.day],
   );
-  const live = !restricted && mode === "normal";
+  const live = !!API_URL && !restricted && mode === "normal";
   const config = snapshot && {
     eventName: snapshot.eventName,
     siteKey: snapshot.siteKey || import.meta.env.VITE_TURNSTILE_SITE_KEY || "",
@@ -149,7 +149,9 @@ function App() {
               </div>
             </div>
             <div className="form-panel">
-              {mode === "closed" ? (
+              {!API_URL ? (
+                <p className="empty">提交暂未开放</p>
+              ) : mode === "closed" ? (
                 <p className="empty">今日接口额度已用完</p>
               ) : config ? (
                 <SubmissionForm
@@ -178,7 +180,7 @@ function App() {
                   eventName={config.eventName}
                   refreshStats={refreshStats}
                   live={live}
-                  closed={mode === "closed"}
+                  closed={!API_URL || mode === "closed"}
                   recordCount={
                     stats.find((item) => item.achievement_id === achievement.id)
                       ?.total || 0
