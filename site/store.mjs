@@ -36,3 +36,8 @@ export function save(name, value) {
   document.cookie = names[name] + '=' + data + '; Max-Age=31536000; Path=/; SameSite=Lax' + secure;
   if (raw(name) !== data) throw new Error('Cookie 写入失败，请检查浏览器的 Cookie 设置。');
 }
+
+export function remember(url) {
+  const previous = read('history').filter(item => item.url !== url);
+  save('history', [{ url, time: Date.now() }, ...previous]);
+}

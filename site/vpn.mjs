@@ -3,6 +3,25 @@ export const GATEWAY = 'https://vpn.csust.edu.cn';
 const formatBytes = new TextEncoder().encode('CASB2021EnLink!!');
 let keyPromise;
 
+export function readDirectAddress(page) {
+  // Slicing href keeps empty query/fragment delimiters and existing % escapes.
+  const route = page.href.slice(page.origin.length + 1);
+  if (/^https?%3a%2f%2f/i.test(route)) {
+    // Only decode the wrapped URL. An unwrapped URL may itself contain %2F or %26.
+    try {
+      const encoded = page.pathname.slice(1);
+      return decodeURIComponent(encoded) + route.slice(encoded.length);
+    } catch {
+      throw new Error('直达链接的百分号编码不完整。');
+    }
+  }
+  // Some static hosts normalize the double slash after the inner scheme.
+  if (/^https?:\/{1,2}[^/]/i.test(route)) return route.replace(/^(https?:)\/(?!\/)/i, '$1//');
+  const bareHost = /^(?:\[[0-9a-f:.]+\]|[^/:?#]+\.[^/:?#]+|localhost|[\w-]+(?=:\d+))(?::\d+)?(?:[/?#]|$)/i;
+  if (page.pathname !== '/404.html' && bareHost.test(route)) return route;
+  throw new Error('请在本站域名后加上完整的 http:// 或 https:// 网址。');
+}
+
 export function parseAddress(input) {
   const text = input.trim();
   if (!text) throw new Error('请输入校内网址。');

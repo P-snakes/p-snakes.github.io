@@ -1,5 +1,5 @@
 import { convert } from './vpn.mjs';
-import { read, save } from './store.mjs';
+import { read, save, remember } from './store.mjs';
 
 const $ = selector => document.querySelector(selector);
 const address = $('#address');
@@ -61,11 +61,6 @@ function storeChange(name, value) {
   }
 }
 
-function remember(url) {
-  const previous = read('history').filter(item => item.url !== url);
-  storeChange('history', [{ url, time: Date.now() }, ...previous]);
-}
-
 function display(converted) {
   current = converted;
   $('#result-link').textContent = converted.target;
@@ -82,7 +77,7 @@ async function run(input, open) {
     const converted = await convert(input);
     if (request !== id) return;
     display(converted);
-    remember(converted.source);
+    try { remember(converted.source); } catch (e) { notice(e.message); }
     render();
     if (open) location.assign(converted.target);
   } catch (e) {

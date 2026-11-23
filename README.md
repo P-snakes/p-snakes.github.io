@@ -6,6 +6,8 @@
 
 ## 转换格式
 
+地址栏直达支持把原网址拼在站点根地址后，例如 <https://p-snakes.github.io/https://www.csust.edu.cn/>。打开后会立即跳到学校 WebVPN，同时记入转换记录。原网址自带的路径、端口、查询和片段均会保留。省略协议时默认使用 HTTPS。GitHub Pages 通过 `site/404.html` 处理这些动态路径。
+
 Android 应用 [changli-planet-app](https://github.com/CreaMakers/changli-planet-app) 使用的 CSUSTDataGet 1.1.9 在 [PhysicsLabConfig.kt](https://github.com/CreaMakers/CSUSTDataGet/blob/33096286ea225c78fa6582fcfca8ee77ee32cec6/csust_spider/src/main/java/com/dcelysia/csust_spider/physicsexperiment/data/remote/PhysicsLabConfig.kt) 中保存物理实验平台的固定 token。通用转换移植自 [CSUSTKit 的 WebVPNUtils.swift](https://github.com/zHElEARN/CSUSTKit/blob/bc6f0f287b129b5a76c548c13324be03c3b24eb0/Sources/CSUSTKit/Utils/WebVPN/WebVPNUtils.swift)，对应授权见 [LICENSE-CSUSTKit.txt](site/LICENSE-CSUSTKit.txt)。
 
 Web Crypto 在浏览器内加密主机名和显式端口，保留路径、查询及片段。测试覆盖学校官网的上游测试向量及 Android 依赖内的物理实验平台地址。
