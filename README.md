@@ -1,11 +1,15 @@
-# 原神成就达成率
+# 长理 WebVPN 链接转换
 
-公开前端。React + GitHub Pages。问卷：周年拾光册。同名成就合并，每项最多收集 50 条记录。
+<https://p-snakes.github.io/> · 长沙理工大学 WebVPN 网址转换器。
 
-本地：`pnpm install`、`pnpm dev`。后端在独立私有仓库运行于 8787 端口。
+在浏览器中将 HTTP / HTTPS 网址转换为学校网关链接。可复制、打开、按名称收藏，或开启转换后自动跳转。访问资源时由学校网关处理登录。收藏、最近转换和跳转偏好使用本站 Cookie，保留期为各自最后一次写入后一年。收藏空间满时提示，历史记录按空间保留最近条目。
 
-部署：仓库变量 `API_URL` 设置为 Cloudflare Worker 地址，`TURNSTILE_SITE_KEY` 设置为公开 Site Key；Pages 来源选择 GitHub Actions。验证：`pnpm test`、`pnpm build`。
+## 转换格式
 
-所有查询读取 `public/snapshot.json` 和 `public/records/`；后端每 5 分钟同步，再由 Actions 发布。记录按数据值分组，本地分页；后台停用时仍能查询已有快照。同一浏览器每天对每个成就只上报一次浏览。凭证默认不加载，开启缩略图和每次打开原图都需 Turnstile 验证。
+Android 应用 [changli-planet-app](https://github.com/CreaMakers/changli-planet-app) 使用的 CSUSTDataGet 1.1.9 在 [PhysicsLabConfig.kt](https://github.com/CreaMakers/CSUSTDataGet/blob/33096286ea225c78fa6582fcfca8ee77ee32cec6/csust_spider/src/main/java/com/dcelysia/csust_spider/physicsexperiment/data/remote/PhysicsLabConfig.kt) 中保存物理实验平台的固定 token。通用转换移植自 [CSUSTKit 的 WebVPNUtils.swift](https://github.com/zHElEARN/CSUSTKit/blob/bc6f0f287b129b5a76c548c13324be03c3b24eb0/Sources/CSUSTKit/Utils/WebVPN/WebVPNUtils.swift)，对应授权见 [LICENSE-CSUSTKit.txt](site/LICENSE-CSUSTKit.txt)。
 
-索引定时重新验证；内容哈希记录文件与构建资源通过 Service Worker 长期缓存，数据变化时使用新地址。提交身份仅在提交时读取第一方 Cookie 和本地备份，交给后端验证。
+Web Crypto 在浏览器内加密主机名和显式端口，保留路径、查询及片段。测试覆盖学校官网的上游测试向量及 Android 依赖内的物理实验平台地址。
+
+## 本地运行
+
+用 Node.js 22 或更新版本执行 `node --test tests/*.test.mjs`。预览可执行 `python3 -m http.server 8000 --directory site`，然后打开 <http://localhost:8000/>。GitHub Pages 发布 `site/` 目录。
