@@ -1,7 +1,7 @@
 export const shortcuts = [
   { code: 'sy', name: '学校首页', url: 'https://www.csust.edu.cn/' },
   { code: 'dwsy', name: '大物实验平台', url: 'http://10.255.65.52/' },
-  { code: 'xk', name: '教务选课', url: 'http://xk.csust.edu.cn/' },
+  { code: 'xk', name: '教务选课', url: 'http://xk.csust.edu.cn/jsxsd/framework/xsMain.jsp' },
   { code: 'tsg', name: '图书馆', url: 'https://lib.csust.edu.cn/' },
   { code: 'bsdt', name: '办事大厅', url: 'https://ehall.csust.edu.cn/' },
   { code: 'wljx', name: '网络教学平台', url: 'http://pt.csust.edu.cn/' }
