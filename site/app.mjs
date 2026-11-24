@@ -1,5 +1,6 @@
 import { convert } from './vpn.mjs';
 import { read, save, remember } from './store.mjs';
+import { showShortcuts } from './shortcuts.mjs';
 
 const $ = selector => document.querySelector(selector);
 const address = $('#address');
@@ -194,13 +195,36 @@ for (const example of document.querySelectorAll('[data-example]')) {
 auto.addEventListener('change', () => {
   if (!storeChange('auto', auto.checked)) auto.checked = read('auto');
 });
-$('#copy').addEventListener('click', async () => {
-  if (!current) return;
+async function copyLink(text) {
   try {
-    await navigator.clipboard.writeText(current.target);
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch { /* Older browsers and restricted clipboard contexts use the selection API. */ }
+  const buffer = document.createElement('textarea');
+  const previousFocus = document.activeElement;
+  buffer.className = 'copy-buffer';
+  buffer.value = text;
+  buffer.readOnly = true;
+  document.body.append(buffer);
+  try {
+    buffer.focus({ preventScroll: true });
+    buffer.select();
+    buffer.setSelectionRange(0, text.length);
+    return document.execCommand('copy');
+  } catch {
+    return false;
+  } finally {
+    buffer.remove();
+    previousFocus?.focus({ preventScroll: true });
+  }
+}
+
+$('button#copy').addEventListener('click', async () => {
+  if (!current) return;
+  if (await copyLink(current.target)) {
     $('#copy span').textContent = '已复制';
     notice('链接已复制');
-  } catch {
+  } else {
     const range = document.createRange();
     range.selectNodeContents($('#result-link'));
     const selection = window.getSelection();
@@ -257,4 +281,5 @@ function refresh() {
 }
 window.addEventListener('pageshow', refresh);
 window.addEventListener('focus', refresh);
+showShortcuts($('#shortcut-links'));
 refresh();

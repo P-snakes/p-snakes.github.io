@@ -1,4 +1,5 @@
 // URL format adapted from CSUSTKit's WebVPNUtils.swift. See LICENSE-CSUSTKit.txt.
+import { shortcutAddress } from './shortcuts.mjs';
 export const GATEWAY = 'https://vpn.csust.edu.cn';
 const formatBytes = new TextEncoder().encode('CASB2021EnLink!!');
 let keyPromise;
@@ -6,6 +7,8 @@ let keyPromise;
 export function readDirectAddress(page) {
   // Slicing href keeps empty query/fragment delimiters and existing % escapes.
   const route = page.href.slice(page.origin.length + 1);
+  const known = shortcutAddress(route);
+  if (known) return known;
   if (/^https?%3a%2f%2f/i.test(route)) {
     // Only decode the wrapped URL. An unwrapped URL may itself contain %2F or %26.
     try {
@@ -50,7 +53,7 @@ export function parseAddress(input) {
 }
 
 export async function convert(input) {
-  const { url, host, suffix, source } = parseAddress(input);
+  const { url, host, suffix, source } = parseAddress(shortcutAddress(input.trim()) ?? input);
   if (url.hostname === 'vpn.csust.edu.cn') {
     if (url.origin === GATEWAY && /^\/https?\/webvpn(?:[a-f0-9]{32})+(?:\/|$)/i.test(url.pathname)) {
       return { source, target: url.href };

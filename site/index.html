@@ -21,7 +21,7 @@
     <symbol id="bookmark" viewBox="0 0 24 24"><path d="M6 20V5a1.5 1.5 0 0 1 1.5-1.5h9A1.5 1.5 0 0 1 18 5v15l-6-4z"/></symbol>
     <symbol id="clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.7"/><path d="M12 7v5l3.5 2"/></symbol>
     <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
-    <symbol id="copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></symbol>
+    <symbol id="icon-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></symbol>
     <symbol id="trash" viewBox="0 0 24 24"><path d="M4 7h16m-12 0V4h8v3m2 0-1 13H7L6 7m4 3v6m4-6v6"/></symbol>
     <symbol id="close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
     <symbol id="check" viewBox="0 0 24 24"><path d="m4 12 5 5L20 6"/></symbol>
@@ -51,7 +51,7 @@
   <form id="converter" class="panel">
     <label for="address" class="field-label">校内网址</label>
     <div class="input-row">
-      <div class="address-wrap"><svg class="icon"><use href="#chain"/></svg><input id="address" name="url" type="text" inputmode="url" placeholder="https://www.csust.edu.cn" autocomplete="off" autocapitalize="none" spellcheck="false" required aria-describedby="address-error"></div>
+      <div class="address-wrap"><svg class="icon"><use href="#chain"/></svg><input id="address" name="url" type="text" inputmode="url" placeholder="输入校内网址或缩写，如 /xk" autocomplete="off" autocapitalize="none" spellcheck="false" required aria-describedby="address-error"></div>
       <button class="primary convert" type="submit" id="convert-button"><span>转换链接</span><svg class="icon"><use href="#arrow"/></svg></button>
     </div>
     <p id="address-error" class="error" role="alert" hidden></p>
@@ -67,9 +67,13 @@
     <h2 id="result-label"><svg class="icon"><use href="#check"/></svg>转换结果</h2>
     <a id="result-link" class="output" rel="noreferrer"></a>
     <div class="actions"><a class="small solid" id="open-result" rel="noreferrer">打开链接 <svg class="icon"><use href="#arrow-up"/></svg></a>
-      <button type="button" class="small" id="copy"><svg class="icon"><use href="#copy"/></svg><span>复制</span></button>
+      <button type="button" class="small" id="copy"><svg class="icon"><use href="#icon-copy"/></svg><span>复制</span></button>
       <button type="button" class="small" id="star"><svg class="icon"><use href="#bookmark"/></svg><span>收藏</span></button></div>
   </section>
+  <nav class="shortcuts" aria-label="常用页面">
+    <div class="shortcut-heading"><h2>常用页面</h2><a href="/go/">打开跳转页 ↗</a></div>
+    <div id="shortcut-links" class="shortcut-links"></div>
+  </nav>
   <section class="collection" aria-label="已保存的网站与记录">
     <div class="bar">
       <div class="tabs" role="tablist" aria-label="已保存的链接">
