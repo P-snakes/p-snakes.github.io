@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { convert, readDirectAddress } from '../site/vpn.mjs';
 
-const prefix = 'https://p-snakes.github.io/';
+const prefix = 'https://tovpn.top/';
 const use = async route => convert(readDirectAddress(new URL(prefix + route)));
 const official = 'https://vpn.csust.edu.cn/https/webvpn4adab4fb272c5ac023304193e377fa2e12b40445ab95148eee69267083a2d062/';
 const physics = 'https://vpn.csust.edu.cn/http/webvpnee536efb7808aac9b0bc36403333c380/';
