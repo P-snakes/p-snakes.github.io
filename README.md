@@ -16,4 +16,4 @@ Web Crypto 在浏览器内加密主机名和显式端口，保留路径、查询
 
 ## 本地运行
 
-用 Node.js 22 或更新版本执行 `node --test tests/*.test.mjs`。预览时先执行 `node scripts/prepare-shortcuts.mjs` 生成缩写入口，再执行 `python3 -m http.server 8000 --directory site`，然后打开 <http://localhost:8000/>。GitHub Pages 发布 `site/` 目录。
+用 Node.js 22 或更新版本执行 `node --test tests/*.test.mjs`。预览时先执行 `node scripts/prepare-shortcuts.mjs` 生成缩写入口，再执行 `python3 -m http.server 8000 --directory dist`，然后打开 <http://localhost:8000/>。GitHub Pages 发布 `dist/` 目录。
